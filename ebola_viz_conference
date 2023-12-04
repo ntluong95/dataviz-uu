@@ -1,0 +1,152 @@
+# Loading packages -----------------------------------------------------------------------------------------
+
+library(readxl)
+library(tidyverse)
+library(ggpubr)
+library(ggthemes)
+library(scales)
+
+
+# Import data ----------------------------------------------------------------------------------------------
+
+ebola <- import("ebola_cleaned.xlsx")
+
+
+# Ebola lethality rate -------------------------------------------------------------------------------------
+
+# Count instances by outcome
+df2 <- df %>% group_by(outcome) %>% summarise(n = n())
+df2 <- df2[!is.na(df2$outcome),]
+
+# Set theme
+blank_theme <- theme_minimal()+
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x=element_blank(),
+    plot.title=element_text(size=14, face="bold"),
+    legend.position = "none"
+  )
+
+# y values where text will be
+death <- nrow(df[df$outcome == "Death" & !is.na(df$outcome),])
+recover <- nrow(df[df$outcome == "Recover" & !is.na(df$outcome),])
+
+labels <- 
+  df2 %>% 
+  mutate(perc = n/ sum(n)) %>% 
+  mutate(labels = paste0(round(100*perc,2),"%")) %>% 
+  arrange(desc(outcome)) %>% 
+  mutate(text_y = c(1141.25, 3423.75)) 
+
+
+# Create pie chart
+ggplot(df2, aes(x="", y=n, fill=outcome)) +
+  geom_bar(width = 1, stat = "identity", color = "white", size = 2) +
+  coord_polar("y", start=0) +
+  scale_fill_manual(values=c("#DF826C", "#C7DCA7")) +
+  blank_theme +
+  geom_label(data = labels, aes(label = labels, y = text_y), fill = alpha("white",0.5), fontface = "bold", size = 5, nudge_x = 0.1) +
+  labs(title = "Ebola lethality rate", subtitle = "2014-2015 Outbreak")
+
+## Add death and recover labels later on
+
+#save
+ggplot("ebola lethality rate.png", height = 4, width = 4, dpi = 600)
+
+
+# Ebola lethality rate per age group -----------------------------------------------------------------------
+
+# Remove missing values & make the age categories a factor
+df3$age_cat <- factor(df3$age_cat, levels = c("0-4", "5-9", "10-14", "15-19", "20-29", "30-39", "40-49", "50-69", "70+"))
+df3 <- df[!is.na(df$outcome) & !is.na(df$age_cat),]
+
+# Make percentages and place them on top of the bars. Not working right now.
+stats <- df3 %>% group_by(age_cat, outcome) %>%
+  summarise(n = n())
+perc <- stats %>% group_by(age_cat) %>%
+  summarise(total = sum(n),
+            Percentage = paste0(round(n/total*100,0),"%"))
+# Keep only percentages of death ( = lethality)
+perc <- perc[c(1,3,5,7,9,11,13,15),][-2]
+
+# Save it in the same data frame so it can be mapped to the values
+df3 <- merge(df3,perc, by = "age_cat")
+
+# 1. In age groups
+ggplot(df3, aes(x = age_cat, fill = outcome)) +
+  geom_bar(position= "fill", color = "black", width = 0.6) +
+  theme_classic() +
+  scale_fill_manual(values = c("Death" = "#DF826C", "Recover" = "#C7DCA7"))+
+  geom_hline(yintercept = 0.5, linetype = 2) +
+  labs(title = "Lethality rate per age group", 
+       subtitle = "Ebola outbreak 2014-2015", 
+       x = "", 
+       y = "") +
+  scale_y_continuous(breaks=seq(0,1,0.1)) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size= 10),
+    legend.title = element_blank(),
+    plot.background = element_rect(fill = "white", color = "white")
+  )
+
+#save
+ggsave("ebola lethality rate_age group.png", height = 4, width = 5, dpi = 600)
+
+
+# Recovery rate depending on days between disease onset and hospitalization --------------------------------
+
+# Remove NA values from columns of interest
+df5 <- df[!is.na(df$outcome) & !is.na(df$days_onset_hosp),] %>% group_by(days_onset_hosp,outcome) %>%
+  summarise(n = n())
+
+ggplot(df5, aes(x = days_onset_hosp, y = n, fill = outcome)) +
+  geom_col(position = "dodge2", width = 0.8) +
+  scale_x_continuous(limits = c(0,10), breaks=seq(0,10,1)) +
+  scale_fill_manual(values = c("Death" = "#DF826C", "Recover" = "#C7DCA7")) +
+  theme_classic() +
+  labs(title = "Days from disease onset to hospitalization", 
+       subtitle = "Ebola outbreak 2014-2015", 
+       y = "Number of patients", 
+       x = "Days from disease onset") +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size= 10),
+        axis.text = element_text(color = "black", size = 10),
+        plot.background = element_rect(fill = "white", color = "white")
+  )
+
+#save
+ggsave("onset to hospitalization_bar.png", height = 4, width = 5, dpi = 600)
+
+
+df6 <- df[!is.na(df$outcome) & !is.na(df$days_onset_hosp),]
+# Transform day 0 to 0.01 to allow visualization with a logarithmic scale
+df6[df6$days_onset_hosp == 0,]$days_onset_hosp <- 0.1
+
+# Compare in a statistical test
+ggplot(df6, aes(x = outcome, y = days_onset_hosp, fill = outcome)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1) +
+  stat_compare_means(comparisons = list(c("Death", "Recover"))) +
+  scale_fill_manual(values = c("Death" = "#DF826C", "Recover" = "#C7DCA7")) +
+  theme_classic() +
+  labs(title = "Days from disease onset to hospitalization", 
+       subtitle = "Ebola outbreak 2014-2015", 
+       x = "", 
+       y = "Days from disease onset") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size= 10),
+        axis.text = element_text(color = "black", size = 10),
+        plot.background = element_rect(fill = "white", color = "white")
+  )
+
+#save
+ggsave("onset to hospitalization_stats.png", height = 4, width = 4, dpi = 600)
