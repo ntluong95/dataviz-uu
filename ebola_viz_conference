@@ -60,8 +60,7 @@ ggplot("ebola lethality rate.png", height = 4, width = 4, dpi = 600)
 
 # Ebola lethality rate per age group -----------------------------------------------------------------------
 
-# Remove missing values & make the age categories a factor
-df3$age_cat <- factor(df3$age_cat, levels = c("0-4", "5-9", "10-14", "15-19", "20-29", "30-39", "40-49", "50-69", "70+"))
+# Remove missing values
 df3 <- df[!is.na(df$outcome) & !is.na(df$age_cat),]
 
 # Make percentages and place them on top of the bars. Not working right now.
@@ -82,10 +81,8 @@ ggplot(df3, aes(x = age_cat, fill = outcome)) +
   theme_classic() +
   scale_fill_manual(values = c("Death" = "#DF826C", "Recover" = "#C7DCA7"))+
   geom_hline(yintercept = 0.5, linetype = 2) +
-  labs(title = "Lethality rate per age group", 
-       subtitle = "Ebola outbreak 2014-2015", 
-       x = "", 
-       y = "") +
+  labs(title = "Lethality rate per age group", subtitle = "Ebola outbreak 2014-2015", x = "", y = "") +
+  scale_x_discrete(limits = c("0-4", "5-9", "10-14", "15-19", "20-29", "30-49", "50-69", "70+")) +
   scale_y_continuous(breaks=seq(0,1,0.1)) +
   theme(
     plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
