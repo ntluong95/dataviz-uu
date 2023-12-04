@@ -15,7 +15,10 @@ pacman::p_load(
 
 ebola <- import("ebola_cleaned.xlsx") %>% 
   # convert date_onset to date format)
-  mutate(date_onset = ymd(date_onset)) %>% 
+  mutate(date_onset = ymd(date_onset),
+         age_cat = factor(age_cat, levels = c(
+           "0-4", "5-9", "10-14", "15-19", "20-29", "30-49", "50-69", "70+"
+         ))) %>% 
   # drop NA value in age_cat variable
   drop_na(age_cat)
 
