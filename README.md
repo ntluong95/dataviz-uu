@@ -45,4 +45,4 @@ Fig2. Days between disease onset and hospitalization. Patients that are hospital
 
 ### Visualisation for lay audience (SciComm, Twitter, local newspaper)
 
-![](community%20report.png)
+![](communication%20science_group%20assignment_vis%20science.png)
